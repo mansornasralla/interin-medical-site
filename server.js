@@ -50,6 +50,14 @@ function auth(req) {
   const t = h.replace('Bearer ', '');
   return sessions.get(t);
 }
+function requireAdmin(req, res) {
+  const user = auth(req);
+  if (!user || user.role !== 'admin') {
+    json(res, 403, { message: 'غير مسموح. إدارة المستخدمين للأدمن فقط' });
+    return null;
+  }
+  return user;
+}
 function sendFile(res, p) {
   let ext = path.extname(p).toLowerCase();
   let type = {
@@ -178,13 +186,30 @@ const server = http.createServer(async (req, res) => {
       if (u.pathname === '/api/stats') return json(res, 200, await counts());
 
       if (u.pathname === '/api/users' && req.method === 'GET') {
+        if (!requireAdmin(req, res)) return;
         let arr = await sb('users', '?select=id,name,email,role,specialty,created_at&order=id.asc');
         return json(res, 200, arr);
       }
       if (u.pathname === '/api/users' && req.method === 'POST') {
+        if (!requireAdmin(req, res)) return;
         let b = await body(req);
-        let r = await sb('users', '', { method: 'POST', body: { name: b.name, email: b.email, password: b.password || '123456', role: b.role, specialty: b.specialty || b.role } });
+        if (!b.name || !b.email) return json(res, 400, { message: 'الاسم والبريد مطلوبان' });
+        let r = await sb('users', '', { method: 'POST', body: { name: b.name, email: b.email, password: b.password || '123456', role: b.role || 'طبيب', specialty: b.specialty || b.role || 'طبيب' } });
         return json(res, 201, { id: r[0].id });
+      }
+      let um = u.pathname.match(/^\/api\/users\/(\d+)$/);
+      if (um && req.method === 'DELETE') {
+        const admin = requireAdmin(req, res); if (!admin) return;
+        const id = Number(um[1]);
+        if (id === admin.id) return json(res, 400, { message: 'لا يمكن حذف حسابك الحالي' });
+        const target = await sb('users', `?id=eq.${id}&select=id,role`);
+        if (!target.length) return json(res, 404, { message: 'المستخدم غير موجود' });
+        if (target[0].role === 'admin') {
+          const admins = await sb('users', '?role=eq.admin&select=id');
+          if (admins.length <= 1) return json(res, 400, { message: 'لا يمكن حذف آخر أدمن' });
+        }
+        await sb('users', `?id=eq.${id}`, { method: 'DELETE' });
+        return json(res, 200, { ok: true });
       }
 
       if (u.pathname === '/api/patients' && req.method === 'GET') {
@@ -282,11 +307,27 @@ const server = http.createServer(async (req, res) => {
     }
     if (u.pathname === '/api/me') return json(res, 200, auth(req) || null);
     if (u.pathname === '/api/stats') return json(res, 200, localStats(d));
-    if (u.pathname === '/api/users' && req.method === 'GET') return json(res, 200, d.users.map(({ password, ...x }) => x));
+    if (u.pathname === '/api/users' && req.method === 'GET') {
+      if (!requireAdmin(req, res)) return;
+      return json(res, 200, d.users.map(({ password, ...x }) => x));
+    }
     if (u.pathname === '/api/users' && req.method === 'POST') {
+      if (!requireAdmin(req, res)) return;
       let b = await body(req); let id = Date.now();
-      d.users.push({ id, name: b.name, email: b.email, password: b.password || '123456', role: b.role, specialty: b.specialty || b.role });
+      if (!b.name || !b.email) return json(res, 400, { message: 'الاسم والبريد مطلوبان' });
+      d.users.push({ id, name: b.name, email: b.email, password: b.password || '123456', role: b.role || 'طبيب', specialty: b.specialty || b.role || 'طبيب' });
       writeLocal(d); return json(res, 201, { id });
+    }
+    let um = u.pathname.match(/^\/api\/users\/(\d+)$/);
+    if (um && req.method === 'DELETE') {
+      const admin = requireAdmin(req, res); if (!admin) return;
+      const id = Number(um[1]);
+      if (id === admin.id) return json(res, 400, { message: 'لا يمكن حذف حسابك الحالي' });
+      const target = d.users.find(x => x.id === id);
+      if (!target) return json(res, 404, { message: 'المستخدم غير موجود' });
+      if (target.role === 'admin' && d.users.filter(x => x.role === 'admin').length <= 1) return json(res, 400, { message: 'لا يمكن حذف آخر أدمن' });
+      d.users = d.users.filter(x => x.id !== id);
+      writeLocal(d); return json(res, 200, { ok: true });
     }
     if (u.pathname === '/api/patients' && req.method === 'GET') {
       let q = (u.searchParams.get('q') || '').toLowerCase();
