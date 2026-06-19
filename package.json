@@ -1,0 +1,11 @@
+{
+  "name": "m-nexus-zero-error",
+  "version": "4.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

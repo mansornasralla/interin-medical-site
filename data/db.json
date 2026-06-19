@@ -1,0 +1,58 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Admin",
+      "email": "admin@clinic.local",
+      "password": "Admin12345",
+      "role": "admin",
+      "specialty": "إدارة"
+    }
+  ],
+  "patients": [
+    {
+      "id": 1781902336468,
+      "idCode": "36468",
+      "name": "هدى",
+      "phone": "00949868486",
+      "age": "18",
+      "gender": "أنثى",
+      "address": "بغداد",
+      "notes": "",
+      "createdAt": "2026-06-19T20:52:16.468Z"
+    }
+  ],
+  "visits": [
+    {
+      "id": 1781902372062,
+      "patientId": 1781902336468,
+      "bp": "150/80",
+      "pulse": "100",
+      "temp": "45",
+      "o2": "98",
+      "bg": "5",
+      "complaint": "الم",
+      "diagnosis": "التهاب",
+      "procedure": "مسكن",
+      "treatment": "",
+      "provider": "Admin",
+      "specialty": "إدارة",
+      "createdAt": "2026-06-19T20:52:52.062Z"
+    }
+  ],
+  "prescriptions": [
+    {
+      "id": 1781902372066,
+      "patientId": 1781902336468,
+      "medicines": [
+        "Omeprazole 40 mg",
+        "Paracetamol 1G",
+        "Diclofenac 50 mg"
+      ],
+      "notes": "",
+      "provider": "Admin",
+      "specialty": "إدارة",
+      "createdAt": "2026-06-19T20:52:52.066Z"
+    }
+  ]
+}
